@@ -1,0 +1,36 @@
+server:
+  retentionPeriod: 3d
+
+  nodeSelector: {}
+    # kubernetes.io/hostname: ip-10-180-40-97
+
+  ingress:
+    enabled: true
+    annotations:
+      traefik.ingress.kubernetes.io/router.middlewares: vm-redirect-https@kubernetescrd
+      kubernetes.io/tls-acme: "true"
+
+    hosts:
+      - name: vm.k3s-test.example.com
+        path:
+          - /
+        port: http
+
+    tls: []
+    ingressClassName: traefik
+    pathType: Prefix
+
+  serviceMonitor:
+    enabled: true
+
+
+extraObjects:
+  - apiVersion: traefik.containo.us/v1alpha1
+    kind: Middleware
+    metadata:
+      name: redirect-https
+      namespace: vm
+    spec:
+      redirectScheme:
+        scheme: https
+        permanent: true

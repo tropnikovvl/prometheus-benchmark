@@ -1,0 +1,144 @@
+mimir:
+  structuredConfig:
+    target: all
+    limits:
+      compactor_blocks_retention_period: 3d
+      out_of_order_time_window: 1h
+    ingester:
+      ring:
+        replication_factor: 1
+    store_gateway:
+      sharding_ring:
+        replication_factor: 1
+
+nginx:
+  replicas: 1
+  ingress:
+    enabled: true
+    ingressClassName: traefik
+    annotations:
+      traefik.ingress.kubernetes.io/router.middlewares: mimir-redirect-https@kubernetescrd
+      kubernetes.io/tls-acme: "true"
+    hosts:
+      - host: mimir.k3s-test.example.com
+        paths:
+          - path: /
+            pathType: Prefix
+    tls: []
+  nodeSelector: {}
+    # kubernetes.io/hostname: ip-10-180-63-243
+
+alertmanager:
+  enabled: false
+
+compactor:
+  persistentVolume:
+    size: 20Gi
+  nodeSelector: {}
+    # kubernetes.io/hostname: ip-10-180-63-243
+
+distributor:
+  extraArgs:
+    distributor.ingestion-rate-limit: "10000000000000"
+  replicas: 1
+  nodeSelector: {}
+    # kubernetes.io/hostname: ip-10-180-63-243
+
+ingester:
+  extraArgs:
+    ingester.max-global-series-per-user: "0"
+    ingester.max-global-series-per-metric: "0"
+  persistentVolume:
+    size: 15Gi
+  replicas: 1
+  zoneAwareReplication:
+    enabled: false
+  nodeSelector: {}
+    # kubernetes.io/hostname: ip-10-180-63-243
+
+chunks-cache:
+  enabled: false
+
+index-cache:
+  enabled: false
+
+metadata-cache:
+  enabled: false
+
+results-cache:
+  enabled: false
+
+minio:
+  consoleIngress:
+    enabled: true
+    ingressClassName: traefik
+    annotations:
+      traefik.ingress.kubernetes.io/router.middlewares: mimir-redirect-https@kubernetescrd
+      kubernetes.io/tls-acme: "true"
+    path: /
+    hosts:
+      - minio.k3s-test.example.com
+    tls: []
+
+  nodeSelector: {}
+    # kubernetes.io/hostname: ip-10-180-63-243
+
+  persistence:
+    size: 50Gi
+
+overrides_exporter:
+  enabled: false
+
+querier:
+  extraArgs:
+    querier.max-fetched-chunks-per-query: "8000000"
+  replicas: 1
+  nodeSelector: {}
+    # kubernetes.io/hostname: ip-10-180-63-243
+
+query_frontend:
+  replicas: 1
+  nodeSelector: {}
+    # kubernetes.io/hostname: ip-10-180-63-243
+
+query_scheduler:
+  enabled: true
+  replicas: 1
+  nodeSelector: {}
+    # kubernetes.io/hostname: ip-10-180-63-243
+
+ruler:
+  enabled: false
+
+store_gateway:
+  persistentVolume:
+    size: 30Gi
+  replicas: 1
+  zoneAwareReplication:
+    enabled: false
+  nodeSelector: {}
+    # kubernetes.io/hostname: ip-10-180-63-243
+
+metaMonitoring:
+  serviceMonitor:
+    enabled: true
+
+gr-aggr-cache:
+  enabled: false
+
+gr-metricname-cache:
+  enabled: false
+
+rollout_operator:
+  enabled: false
+
+extraObjects:
+  - apiVersion: traefik.containo.us/v1alpha1
+    kind: Middleware
+    metadata:
+      name: redirect-https
+      namespace: mimir
+    spec:
+      redirectScheme:
+        scheme: https
+        permanent: true

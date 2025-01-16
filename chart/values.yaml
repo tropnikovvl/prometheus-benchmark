@@ -1,28 +1,29 @@
 # vmtag is a docker image tag for VictoriaMetrics components,
 # which run inside the prometheus-benchmark - e.g. vmagent, vmalert, vmsingle.
-vmtag: "v1.102.1"
+vmtag: "v1.108.1"
 
 # nodeSelector is an optional node selector for placing benchmark pods.
 nodeSelector: {}
+  # kubernetes.io/hostname: ip-10-180-24-13
 
 # targetsCount defines the number of nodeexporter instances to scrape by every benchmark pod.
 # This option allows to configure the number of active time series to push to remoteStorages.
 # Every nodeexporter exposes around 1230 unique metrics, so when targetsCount
 # is set to 1000, then the benchmark generates around 1230*1000=1.23M active time series.
 # See also writeReplicas and writeURLReplicas options.
-targetsCount: 1000
+targetsCount: 5000
 
 # scrapeInterval defines how frequently to scrape nodeexporter targets.
 # This option allows to configure data ingestion rate per every remoteStorages.
 # For example, if the benchmark generates 1.23M active time series and scrapeInterval
 # is set to 10s, then the data ingestion rate equals to 1.23M/10s = 123K samples/sec.
 # See also writeReplicas and writeURLReplicas options.
-scrapeInterval: 10s
+scrapeInterval: 15s
 
 # queryInterval is how often to send queries from files/alerts.yaml to remoteStorages.readURL
 # This option can be used for tuning read load at remoteStorages.
 # It is a good rule of thumb to keep it in sync with scrapeInterval.
-queryInterval: 10s
+queryInterval: 15s
 
 # scrapeConfigUpdatePercent is the percent of nodeexporter targets
 # which are updated with unique label on every scrape config update
@@ -72,37 +73,17 @@ remoteStorages:
   # the name of the remote storage to test.
   # The name is added to remote_storage_name label at collected metrics
   vm:
-    # writeURL should contain the url, which accepts Prometheus remote_write
-    # protocol at the tested remote storage.
-    # For example, the following urls may be used for testing VictoriaMetrics:
-    # - http://<victoriametrics-addr>:8428/api/v1/write for single-node VictoriaMetrics
-    # - http://<vminsert-addr>:8480/insert/0/prometheus/api/v1/write for cluster VictoriaMetrics
-    writeURL: "http://victoria-metrics-victoria-metrics-cluster-vminsert.default.svc.cluster.local:8480/insert/0/prometheus/api/v1/write"
-    # writeURLReplicas is an optional number of writeURL replicas to send data to.
-    # A unique `url_replica` label is added to every writeURL replica via `extra_label` query arg
-    # in order to generate unique time series.
-    # This option can be used for increasing the number of active time series
-    # to send to writeURL. Please note, `extra_label` feature is supported only by VictoriaMetrics servers.
-    # See also writeReplicas option.
-    writeURLReplicas: 1
-    # readURL is an optional url when query performance needs to be tested.
-    # The query performance is tested by sending alerting queries from files/alerts.yaml
-    # to readURL.
-    # For example, the following urls may be used for testing query performance:
-    # - http://<victoriametrics-addr>:8428/ for single-node VictoriaMetrics
-    # - http://<vmselect-addr>:8481/select/0/prometheus/ for cluster VictoriaMetrics
-    readURL: ""
-    # writeBearerToken is an optional bearer token to use when writing data to writeURL.
-    writeBearerToken: ""
-    # readBearerToken is an optional bearer token to use when querying data from readURL.
-    readBearerToken: ""
-    # writeHeaders is an optional list of headers in form `header:value`, attached to every write request.
-    # multiple headers must be delimited by '^^': 'header1:value1^^header2:value2'
-    writeHeaders: ""
-    # readHeaders is an optional list of headers in form `header:value`, attached to every read request.
-    # multiple headers must be delimited by '^^': 'header1:value1^^header2:value2'
-    readHeaders: ""
-    # vmagentExtraFlags allows to pass additional flags to vmagent.
-    vmagentExtraFlags: []
-    # - "--remoteWrite.useVMProto=true"
+    writeURL: "http://vms-victoria-metrics-single-server.vm.svc.cluster.local:8428/api/v1/write"
+    readURL: "http://vms-victoria-metrics-single-server.vm.svc.cluster.local:8428/"
 
+  mimir:
+    writeURL: "http://mimir-nginx.mimir.svc.cluster.local/api/v1/push"
+    readURL: "http://mimir-nginx.mimir.svc.cluster.local/prometheus"
+    vmagentExtraFlags:
+      - "--remoteWrite.queues=1"
+
+  prom:
+    writeURL: "http://prom-prometheus-server.prom.svc.cluster.local/api/v1/write"
+    readURL: "http://prom-prometheus-server.prom.svc.cluster.local/"
+    vmagentExtraFlags:
+      - "--remoteWrite.queues=1"

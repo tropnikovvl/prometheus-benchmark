@@ -1,0 +1,79 @@
+server:
+  extraFlags:
+    - web.enable-remote-write-receiver
+    - web.enable-lifecycle
+    - storage.tsdb.wal-compression
+
+  tsdb:
+    out_of_order_time_window: 1h
+
+  ingress:
+    enabled: true
+    ingressClassName: traefik
+    annotations:
+      traefik.ingress.kubernetes.io/router.middlewares: prom-redirect-https@kubernetescrd
+      kubernetes.io/tls-acme: "true"
+
+    hosts:
+      - prom.k3s-test.example.com
+    path: /
+    pathType: Prefix
+    tls: []
+
+  nodeSelector: {}
+    # kubernetes.io/hostname: ip-10-180-56-129
+
+  persistentVolume:
+    size: 50Gi
+
+serverFiles:
+  prometheus.yml:
+    scrape_configs: []
+
+extraManifests:
+  - |
+    apiVersion: traefik.containo.us/v1alpha1
+    kind: Middleware
+    metadata:
+      name: redirect-https
+      namespace: prom
+    spec:
+      redirectScheme:
+        scheme: https
+        permanent: true
+
+  - |
+    apiVersion: monitoring.coreos.com/v1
+    kind: ServiceMonitor
+    metadata:
+      labels:
+        app.kubernetes.io/component: server
+        app.kubernetes.io/instance: prom
+        app.kubernetes.io/name: prometheus
+        app.kubernetes.io/part-of: prometheus
+      name: prom-prometheus-server
+      namespace: prom
+    spec:
+      endpoints:
+      - port: http
+        targetPort: http
+      namespaceSelector:
+        matchNames:
+        - prom
+      selector:
+        matchLabels:
+          app.kubernetes.io/component: server
+          app.kubernetes.io/instance: prom
+          app.kubernetes.io/name: prometheus
+
+alertmanager:
+  enabled: false
+
+kube-state-metrics:
+  enabled: false
+
+prometheus-node-exporter:
+  enabled: false
+
+prometheus-pushgateway:
+  enabled: false
